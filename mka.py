@@ -1,40 +1,43 @@
 # encoding: utf-8
-
-#MKA:xkurka03
+# 2. Projekt do predmetu IPP 2016 v jaztku python
+# varianta projektu: MKA – minimalizace konecniho automatu
+# autor : xondri04 -> xondri04@stud.fit.vutbr.cz
+# datum: 4/10/2016
 
 import os, sys, analysis
 
-help = "Aplikace pro minimalizaci konecneho automatu.\n\
-	--help\n\
-		Vypise tuto napovedu.\n\
-	--input=filename\n\
-		Vstupni soubor. Pokud neni zadan, pouzije se stdin\n\
-	--output=filname\n\
-		Vystupni soubor. Pokud neni zadan, pouzije se stdout\n\
-	-f, --find-non-finishing\n\
-		Hleda neukoncujici stav zadaneho WSPFA.\n\
-	-m, --minimize\n\
-		Minimalizace WSPFA.\n\
-	-i, --case-insensitive\n\
-		Ignoruje se rozdil ve velikosti pismen.\n\
+help = "Skript sluziaci na minimalizaciu konecneho automatu v pythone.\n\
+       --help\n\
+              Vypis napovedy skriptu.\n\
+       --input=filename\n\
+              Zadany vstupny subor. Pokial  nieje zadany, ako vstup sa pouzije stdin\n\
+       --output=filname\n\
+              Vystupni subor. Pokial nieje zadany, ako vystup sa pouzije stdout\n\
+       -f, --find-non-finishing\n\
+              Hlada sa neukoncujuci stav zadaneho WSPFA.\n\
+       -m, --minimize\n\
+              Minimalizacia WSPFA.\n\
+       -i, --case-insensitive\n\
+              Skript ignoruje rozdiel vo velkosti pismen.\n\
 "
 
-def exit(e_id='e_unknown'):
-	"""Prints error message in stderr and closes the program with corresponding error code. 
-	Arguments:
-		e_id -- identification of error
-	"""
 
+""" Vypis chybovej hlasky na stderr a ukoncenie skriptu s prislusnym chybovym stavom (cislom). 
+Argument e_id - iidentifikator chyby
+"""
+
+def exit(e_id='e_unknown'):
+	
 	errors = {
 		'e_ok'			: [0],
-		'e_arg'  		: [1,  'Spatny format parametru skriptu.'],
-		'e_in'  		: [2,  'Chyba pri cteni vstupu skriptu.'],
-		'e_out'  		: [3,  'Chyba pri otevreni pro zapis do vystupniho souboru.'],
-		'e_format'		: [4,  'Chybny format vstupniho souboru.'],
-		'e_ana'			: [60, 'Chybny format konecneho automatu.'],
-		'e_sem'			: [61, 'Semanticka chyba definice konecneho automatu.'],
-		'e_wsfa'		: [62, 'Konecny automat neni dobre specifikovan.'],
-		'e_unknown'		: [255,'Neznama chyba.'],
+		'e_arg'  		: [1,  'Chybne zadane parametre skryptu, alebo nespravny format.'],
+		'e_in'  		: [2,  'Chyba vstupneho suboru - neexistuje , alebo nejde otvorit pre citanie.'],
+		'e_out'  		: [3,  'Chyba vystupneho suboru - neexistuje, alebo nejde otvorit pre zapis.'],
+		'e_format'		: [4,  'Chybny format vstupneho suboru.'],
+		'e_ana'			: [60, 'Chybne zadany konecny automat, nesplna lexikalne a syntakticke pravidla.'],
+		'e_sem'			: [61, 'Semanticka chyba.'],
+		'e_wsfa'		: [62, 'Konecny automat neni dobre specifikovan.'], // nema byt
+		'e_unknown'		: [100,'Ostatne chyby.'],
 	}
 	if e_id != 'e_ok':
 		print(errors[e_id][1], file=sys.stderr)
@@ -44,7 +47,7 @@ def exit(e_id='e_unknown'):
 
 class Arguments:
 	def __init__(self):
-		self.input 	= sys.stdin
+		self.input = sys.stdin
 		self.output = sys.stdout
 		self.f 			= None # find non-finishing
 		self.m 			= None # minimze
@@ -59,9 +62,8 @@ class Arguments:
 		filename = arg[arg.find("--input=")+len("--input="):]
 		try:
 			self.input = open(filename, 'r')
-		except: #cath 'em all :-D
+		except: 
 			exit('e_in')
-
 
 	def set_output(self, arg):
 		filename = arg[arg.find("--output=")+len("--output="):]
@@ -76,8 +78,8 @@ class Arguments:
 			mst_text = mst_text[1:-1]
 		self.mst = mst_text
 
+	""" Vypis hodnot ulozenych v objekte """
 	def show(self):
-		""" Prints values of variables in object """
 		print("Argumenty:")
 		print("\tinput:", self.input)
 		print("\toutput:", self.output)
@@ -85,10 +87,9 @@ class Arguments:
 		print("\tminimize:", self.m)
 		print("\tcase-insensitive:", self.i)
 		print("\tuknown(optional):", self.unknown)
-	#show
 
+	""" Kontrola, ci su pravidla OK """
 	def is_ok(self):
-		""" Check if there are all of the rules OK """
 		if self.f and self.m:
 			return False
 		elif (self.f or self.m) and self.mst:
@@ -97,7 +98,6 @@ class Arguments:
 			return False
 
 		return True
-	#is_ok
 
 if __name__ == '__main__':
 	args = Arguments()
@@ -130,12 +130,11 @@ if __name__ == '__main__':
 			args.mws = True
 		else:
 			args.unknown = True
-	#for
 
 	if not args.is_ok():
 		exit("e_arg")
 
-	#read input
+	#otvorenie vstupneho suboru pre citanie
 	try:
 		source_txt = args.input.read()
 	except:
