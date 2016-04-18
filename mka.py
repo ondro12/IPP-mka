@@ -6,7 +6,7 @@
 
 import os, sys, analysis
 
-help = "Skript sluziaci na minimalizaciu konecneho automatu v pythone.\n\
+napoveda = "Skript sluziaci na minimalizaciu konecneho automatu v pythone.\n\
        --help\n\
               Vypis napovedy skriptu.\n\
        --input=filename\n\
@@ -21,12 +21,10 @@ help = "Skript sluziaci na minimalizaciu konecneho automatu v pythone.\n\
               Skript ignoruje rozdiel vo velkosti pismen.\n\
 "
 
-
-""" Vypis chybovej hlasky na stderr a ukoncenie skriptu s prislusnym chybovym stavom (cislom). 
+""" Vypis chybovej hlasky na stderr a exit skriptu s prislusnym chybovym stavom (cislom). 
 Argument e_id - iidentifikator chyby
 """
-
-def exit(e_id='e_unknown'):
+def chybovy_vypis(e_id='e_unknown'):
 	
 	errors = {
 		'e_ok'			: [0],
@@ -36,167 +34,171 @@ def exit(e_id='e_unknown'):
 		'e_format'		: [4,  'Chybny format vstupneho suboru.'],
 		'e_ana'			: [60, 'Chybne zadany konecny automat, nesplna lexikalne a syntakticke pravidla.'],
 		'e_sem'			: [61, 'Semanticka chyba.'],
-		'e_wsfa'		: [62, 'Konecny automat neni dobre specifikovan.'], // nema byt
-		'e_unknown'		: [100,'Ostatne chyby.'],
+		'e_wsfa'		: [62, 'Konecny automat neni dobre specifikovan.'],
+		'e_unknown'		: [101,'Ostatne chyby.'],
 	}
 	if e_id != 'e_ok':
 		print(errors[e_id][1], file=sys.stderr)
-		sys.exit(errors[e_id][0])
+		sys.chybovy_vypis(errors[e_id][0])
 	else:
 		sys.exit(0)
 
 class Arguments:
 	def __init__(self):
-		self.input = sys.stdin
-		self.output = sys.stdout
+		self.vstup = sys.stdin
+		self.vystup = sys.stdout
 		self.f 			= None # find non-finishing
 		self.m 			= None # minimze
 		self.i 			= None # case-insensitive
 		self.wht		= None # white-char bonus
 		self.rlo		= None # rules-only bonus
 		self.mst		= None # analyze string bonus
-		self.mws 	= None # well-specified final automat bonus
-		self.unknown= None
+		self.mws 		= None # well-specified final automat bonus
+		self.neznama	= None
 
-	def set_input(self, arg):
-		filename = arg[arg.find("--input=")+len("--input="):]
+	def nastav_vstup(self, argumenty):
+		vstupny_subor = argumenty[argumenty.find("--input=")+len("--input="):]
 		try:
-			self.input = open(filename, 'r')
-		except: 
-			exit('e_in')
+			self.vstup = open(vstupny_subor, 'r')
+		except: #cath 'em all :-D
+			chybovy_vypis('e_in')
 
-	def set_output(self, arg):
-		filename = arg[arg.find("--output=")+len("--output="):]
+
+	def nastav_vystup(self, argumenty):
+		vystupny_subor = argumenty[argumenty.find("--output=")+len("--output="):]
 		try:
-			self.output = open(filename, 'w')
+			self.vystup = open(vystupny_subor, 'w')
 		except:
-			exit('e_in')
+			chybovy_vypis('e_in')
 
-	def set_mst(self,arg):
-		mst_text = arg[arg.find("--analyze-string=")+len("--analyze-string="):]
+	def nastav_hladany(self,argumenty):
+		mst_text = argumenty[argumenty.find("--analyze-string=")+len("--analyze-string="):]
 		if mst_text[0] == "\"" or mst_text[-1] == "\"":
 			mst_text = mst_text[1:-1]
 		self.mst = mst_text
 
-	""" Vypis hodnot ulozenych v objekte """
 	def show(self):
+		""" Prints values of variables in object """
 		print("Argumenty:")
-		print("\tinput:", self.input)
-		print("\toutput:", self.output)
+		print("\tinput:", self.vstup)
+		print("\toutput:", self.vystup)
 		print("\tfind-non-finishing:", self.f)
 		print("\tminimize:", self.m)
 		print("\tcase-insensitive:", self.i)
-		print("\tuknown(optional):", self.unknown)
+		print("\tuknown(optional):", self.neznama)
+	#show
 
-	""" Kontrola, ci su pravidla OK """
-	def is_ok(self):
+	def kontrola_argumentov(self):
+		""" Check if there are all of the rules OK """
 		if self.f and self.m:
 			return False
 		elif (self.f or self.m) and self.mst:
 			return False
-		elif self.unknown:
+		elif self.neznama:
 			return False
 
 		return True
+	#kontrola_argumentov
 
 if __name__ == '__main__':
-	args = Arguments()
+	argumenty = Arguments()
 
 	for p in sys.argv[1:]:
 		if p == "--help":
 			if len(sys.argv) == 2:
 				print(help)
-				exit('e_ok')
+				chybovy_vypis('e_ok')
 			else:
-				exit('e_arg')
+				chybovy_vypis('e_arg')
 
 		if p == "-f" or p == "--find-non-finishing":
-			args.f = True
+			argumenty.f = True
 		elif p == "-m" or p == "--minimize":
-			args.m = True
+			argumenty.m = True
 		elif p == "-i" or p == "--case-insensitive":
-			args.i = True
+			argumenty.i = True
 		elif p.find("--input=") != -1:
-			args.set_input(p)
+			argumenty.nastav_vstup(p)
 		elif p.find("--output=") != -1:
-			args.set_output(p)
+			argumenty.nastav_vystup(p)
 		elif p == "-w" or p == "--white-char":
-			args.wht = True
+			argumenty.wht = True
 		elif p == "-r" or p == "--rules-only":
-			args.rlo = True
+			argumenty.rlo = True
 		elif p.find("--analyze-string=") != -1:
-			args.set_mst(p)
+			argumenty.nastav_hladany(p)
 		elif p == "--wsfa":
-			args.mws = True
+			argumenty.mws = True
 		else:
-			args.unknown = True
+			argumenty.neznama = True
+	#for
 
-	if not args.is_ok():
-		exit("e_arg")
+	if not argumenty.kontrola_argumentov():
+		chybovy_vypis("e_arg")
 
-	#otvorenie vstupneho suboru pre citanie
+	#read input
 	try:
-		source_txt = args.input.read()
+		citany_text = argumenty.vstup.read()
 	except:
-		exit('e_in')
+		chybovy_vypis('e_in')
 
-	if args.i:
-		source_txt = source_txt.lower()
+	if argumenty.i:
+		citany_text = citany_text.lower()
 
 	#create instance of Analysis object and analyze it
-	ana = analysis.Analysis(source_txt, args.wht, args.i)
+	ana = analysis.Analysis(citany_text, argumenty.wht, argumenty.i)
 	code, machine = 0, ""
 	#in case of rlo bonus use different analyze function
-	if args.rlo:
+	if argumenty.rlo:
 		code, machine = ana.analyze_by_rules()
 	else:
 		code, machine = ana.analyze()
 	if code != 0:
 		print(machine, file=sys.stderr)
-		exit('e_ana')
+		chybovy_vypis('e_ana')
 
 	#reamove duplicates
-	machine.remove_duplicates()
+	machine._nahrad_opakujucel_()
 
-	#validate (look for semantic errors)
-	code, msg = machine.validate()
+	#over (look for semantic errors)
+	code, msg = machine.over()
 	if code != 0:
-		exit('e_sem')
+		chybovy_vypis('e_sem')
 
 	# if mws is enabled, try convert fsm into wsfa
-	if args.mws:
-		machine.to_wsfa()
+	if argumenty.mws:
+		machine._preved_na_wsfa_()
 
 	#check if it is wsfa
-	if not machine.is_wsfa():
-		exit('e_wsfa')
+	if not machine._je_wsfa_():
+		chybovy_vypis('e_wsfa')
 
 	#chech if there is mst and if so try string
-	if args.mst:
-		if machine.analyze_string(args.mst):
-			print("1", sep="", end="\n", file=args.output)
+	if argumenty.mst:
+		if machine._analyzuj_retazec_(argumenty.mst):
+			print("1", sep="", end="\n", file=argumenty.vystup)
 		else:
-			print("0", sep="", end="\n", file=args.output)
-		exit('e_ok')
+			print("0", sep="", end="\n", file=argumenty.vystup)
+		chybovy_vypis('e_ok')
 
-	if args.f:
+	if argumenty.f:
 		#find non-finishing
-		non_finishing = machine.non_finishing_states()
+		non_finishing = machine._neukoncujuce_stavy_()
 		if len(non_finishing) > 0:
-			print(non_finishing[0], file=args.output, end="")
-		exit('e_ok')
+			print(non_finishing[0], file=argumenty.vystup, end="")
+		chybovy_vypis('e_ok')
 
-	if args.m:
+	if argumenty.m:
 		#minimize
-		machine.minimize()
+		machine._minimalizuj_()
 		#write it
-		machine.write_minimized(args.output)
-		exit('e_ok')
+		machine._vypis_minimalizovany_(argumenty.vystup)
+		chybovy_vypis('e_ok')
 
 	# if we did nothing so far, print only wsfa
-	machine.write_wsfa(args.output)
+	machine._vypis_wsfa_(argumenty.vystup)
 
 	# cleaning up and exiting
-	args.output.close()
-	args.input.close()
-	exit('e_ok')
+	argumenty.vystup.close()
+	argumenty.vstup.close()
+	chybovy_vypis('e_ok')
