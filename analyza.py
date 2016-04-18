@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-#MKA:xkurka03
+#MKA:xondri04
 
 import fsm, re, sys
 
@@ -36,7 +36,7 @@ class Analysis:
 		#"global" variable to contain information if get_token loaded some whitespaces
 		self.was_ws = False
 
-        # just to now if we had ws or comma
+        	# just to now if we had ws or comma
 		self.got_ws = False
 		self.txt = ""
 		self.token = lex.eof
@@ -61,7 +61,7 @@ class Analysis:
 			',',
 			'.',
 		]
-########## methods for lex analysis ##########
+	########## methods for lex analysis ##########
 	def __get_token(self):
 		""" Parses and returns next token from input string """
 		if self.got_ws == True:
