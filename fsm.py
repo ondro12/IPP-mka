@@ -1,6 +1,5 @@
-# encoding: utf-8
-
-#MKA:xkurka03
+#projekt : mka
+#autor : Matus Ondris
 
 import pprint
 
