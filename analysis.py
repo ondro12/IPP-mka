@@ -181,7 +181,7 @@ class Analysis:
 		while token != lex.right_curly and token != lex.eof:
 #ziskanie identifikatoru
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, 'U definicie stavu je nutnz retazec v tvare C identifikatoru.'
+				return 1, 'U definicie stavu je nutny retazec v tvare C identifikatoru.'
 
 #vlozenie do fsm.stavy
 			self.fsm.stavy.append(txt)
@@ -254,7 +254,7 @@ class Analysis:
 				return 1, 'Za abecedou sa musi nachadzat ciarka.'
 		else:
 			if self.was_ws != True and token != lex.comma:
-				return 1, 'Za abecedou sa musi nachadzat bily znak.'
+				return 1, 'Za abecedou sa musi nachadzat biely znak.'
 			if token != lex.comma:
 				self.got_ws = True
 
@@ -290,21 +290,21 @@ class Analysis:
 			if not was_arrow:
 				txt, token = self.__get_token()
 				if token != lex.arrow:
-					return 1, 'Po pociatecnim stave a pripadnom znaku abecedy ocakavam "->".'
+					return 1, 'Po pociatocnom stave a pripadnom znaku abecedy ocakavam "->".'
 
 			txt, token = self.__get_token()
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, 'Po "->" ocekavam identifikator ciloveho stavu.'
+				return 1, 'Po "->" ocakavam identifikator cieloveho stavu.'
 			second_state = txt
 
 			self.was_ws = False
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.right_curly:
-					return 1, 'Na konci stavu cekam ciarku alebo pravu zlozenou zatvorku.'
+					return 1, 'Na konci stavu cakam ciarku alebo pravu zlozenu zatvorku.'
 			else:
 				if token != lex.right_curly and token != lex.comma and self.was_ws != True:
-					return 1, 'Na konci stavu cakam ciarku alebo prau zlozenu zatvorku.'
+					return 1, 'Na konci stavu cakam ciarku alebo pravu zlozenu zatvorku.'
 				if token != lex.comma and token != lex.right_curly:
 					self.got_ws = True
 
@@ -327,7 +327,7 @@ class Analysis:
 				return 1, 'Za definiciou pravidiel sa musi nachadzat ciarka.'
 		else:
 			if self.was_ws != True and token != lex.comma:
-				return 1, 'Za definiciou pravidiel sa musi nachadzat bily znak.'
+				return 1, 'Za definiciou pravidiel sa musi nachadzat biely znak.'
 			if token != lex.comma:
 				self.got_ws = True
 
@@ -362,7 +362,7 @@ class Analysis:
 		txt, token = self.__get_token()
 		while token != lex.right_curly and token != lex.eof:
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, 'V definicii konecnych stavvu sa musi nachadzat retezec v tvare C identifikatoru.'
+				return 1, 'V definicii konecnych stavov sa musi nachadzat retazec v tvare C identifikatoru.'
 
 			self.fsm.ukoncujuce_stavy.append(txt)
 
@@ -390,7 +390,7 @@ class Analysis:
 		char, token = self.__get_token()
 
 		if token != lex.left_par:
-			return 1, "Cely KA musi byt uzatvoreny gulatou zatvorkou."
+			return 1, "Cely KA musi byt uzatvoreny lavou gulatou zatvorkou."
 
 		err, msg = self.__a_states()
 		if err != 0:
@@ -414,11 +414,11 @@ class Analysis:
 
 		char, token = self.__get_token()
 		if token != lex.right_par:
-			return 1, "Cely FSM musi byt ohranicen v kulatych zavorkach."
+			return 1, "Cely KA musi byt ohraniceny v gulatych zatvorkach."
 
 		char, token = self.__get_token()
 		if token != lex.eof:
-			return 1, "Po prave zavorce mohou nasledovat pouze komentare nebo bile znaky."
+			return 1, "Po pravej zavorke mozu nasledovat jedine komentare alebo biele znaky."
 
 		return 0, ''
 
@@ -461,7 +461,7 @@ class Analysis:
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.dot and token != lex.eof:
-					return 1, "Za pravidlom ocakavam carku alebo bodku."
+					return 1, "Za pravidlom ocakavam ciarku alebo bodku."
 			else:
 				if token != lex.comma and token != lex.dot and token != lex.eof and self.was_ws != True:
 					return 1, "Za pravidlom ocekavam ciarku, bodku alebo biely znak."
@@ -471,7 +471,7 @@ class Analysis:
 
 			self.fsm.pravidla.append({
 				'first_state' : first_state,
-				'alpha_char'	: char,
+				'alpha_char'  : char,
 				'second_state': second_state
 			})
 
