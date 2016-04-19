@@ -1,6 +1,5 @@
-# encoding: utf-8
-
-#MKA:xkurka03
+#projekt : mka
+#autor : Matus Ondris
 
 import fsm, re, sys
 
@@ -24,33 +23,24 @@ class lex:
 	class eof:
 		pass
 
+# deklaracia triedy + premennych
 class Analysis:
 	def __init__(self, source, ws, c_insensitive):
-		""" Sets all the variables to init values """
-		#main source text
 		self.text = source
-
-		#whitespace instead of commas (bonus)
 		self.ws = ws
-
-		#"global" variable to contain information if get_token loaded some whitespaces
 		self.was_ws = False
 
-        # just to now if we had ws or comma
 		self.got_ws = False
 		self.txt = ""
 		self.token = lex.eof
 
-		#object from fsm module for containing final state machine
+
 		self.fsm = fsm.FinalStateMachine(c_insensitive)
 
-		#cursor for get_token method
 		self.cursor = 0
 
-		#regex for C identifier
 		self.re_identifier = re.compile(r"^[^\d\W]\w*\Z")
 
-		#reserved characters
 		self.reserved_chars = [
 			'(',
 			')',
@@ -61,20 +51,22 @@ class Analysis:
 			',',
 			'.',
 		]
-########## methods for lex analysis ##########
+		
+## metody sluziace na lexikalnu analyzu ##
+
+#rozdeli vstupny retazec a vrati dalsi token 
 	def __get_token(self):
-		""" Parses and returns next token from input string """
 		if self.got_ws == True:
 			self.got_ws = False
 			return self.txt, self.token
 
-		#check if cursor is outside string
+#kontrola , ci kurzor je mimo retazec
 		if self.cursor >= len(self.text):
 			self.txt = ""
 			self.token = lex.eof
 			return '', lex.eof
 
-		#remove whitespaces from the begging of the rest of a source text
+#odstranenie bielych znakov
 		while self.text[self.cursor].isspace():
 			self.was_ws = True
 			self.cursor += 1
@@ -83,14 +75,13 @@ class Analysis:
 				self.token = lex.eof
 				return '', lex.eof
 
-		#get acutal character and set cursor to the next char
+#ziska aktualny znak a nastavy kurzor na dalsi znak
 		char = self.text[self.cursor]
 		self.cursor += 1
 
-		#main "switch"
 		if char in self.reserved_chars:
 			if char == '-' and self.text[self.cursor] == '>':
-				self.cursor += 1 #because we used another char for this
+				self.cursor += 1 
 				self.char = "->"
 				self.token = lex.arrow
 				return '->', lex.arrow
@@ -118,9 +109,9 @@ class Analysis:
 				self.char = "."
 				self.token = lex.dot
 				return char, lex.dot
-		#if
 
-		#delete comment and get next token
+
+#odstranenie komentarob a ziskanie dalsieho tokenu
 		elif char == '#':
 			self.was_ws = True
 			while char != '\n':
@@ -132,7 +123,7 @@ class Analysis:
 				char = self.text[self.cursor]
 			return self.__get_token()
 
-		#analyzing string in apostrophes
+#analyzovanie retazca v apostrofoch
 		elif char == '\'':
 			rslt = ""
 			end = False
@@ -156,9 +147,8 @@ class Analysis:
 			self.txt = rslt[1:-1]
 			self.token = lex.string
 			return rslt[1:-1], lex.string
-		#elif
 
-		#analyzing identifier or string outside apostrophes
+#analyzovanie identifikatora alebo retazca mimo apostrofov
 		else:
 			rslt = ""
 			while not char.isspace() and char not in self.reserved_chars and char != '\'':
@@ -169,125 +159,113 @@ class Analysis:
 					return '', lex.eof
 				char = self.text[self.cursor]
 				self.cursor += 1
-			self.cursor -= 1 #magic, dont touch
+			self.cursor -= 1 
 			self.txt = rslt
 			self.token = lex.string
 			return rslt, lex.string
-	#get_token
 
+#kontrola ci retazec v textovom argumente je C identifikator , alebo nie
 	def __is_identifier(self, text):
-		""" Checks if string in text argument is C identifier or not """
 		return True if re.match(self.re_identifier, text) != None else False
 
-########## methods for syntactic analysis ##########
+## metody sluziace na semanticku analyzu ##
+
+#rozdely vsetky stavy z tokenov a ulozi ich do triednych premennych
 	def __a_states(self):
-		""" Parses all stavy from tokens and stores them in class variable """
 		txt, token = self.__get_token()
 		#check for left curly bracket
 		if token != lex.left_curly:
-			return 1, 'Definice stavu musi byt uzavrena ve slozenych zavorkach.'
+			return 1, 'Definicia stavu sa musi nachadzat v zatvorkach.'
 
 		txt, token = self.__get_token()
 		while token != lex.right_curly and token != lex.eof:
-			#look for identifier
+#ziskanie identifikatoru
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, 'V definici stavu musi byt retezec ve tvaru C identifikatoru.'
+				return 1, 'U definicie stavu je nutnz retazec v tvare C identifikatoru.'
 
-			#insert it into fsm.stavy
+#vlozenie do fsm.stavy
 			self.fsm.stavy.append(txt)
 
-			#look for comma or right curly bracket
+#hladanie ciarky , alebo }
 			self.was_ws = False
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.right_curly:
-					return 1, 'V definici stavu musi byt jednotlive polozky oddeleny carkou.'
+					return 1, 'U definicie stavu musia byt jednotlive polozky oddelene ciarkou.'
 			else:
 				if token != lex.right_curly and token != lex.comma and self.was_ws != True:
-					return 1, 'V definici stavu musi byt jednotlive polozky oddeleny bilym znakem (znaky).'
+					return 1, 'U definicie stavu musia byt jednotlive polozky oddelene bielym znakom .'
 				if token != lex.right_curly and token != lex.comma:
 					self.got_ws = True
-			# we already got end of state definition - right curly bracket
 			if token != lex.right_curly:
 				txt, token = self.__get_token()
 
-		#check for right curly bracket
 		if token != lex.right_curly:
-			return 1, 'Definice stavu musi byt uzavrena ve slozenych zavorkach.'
+			return 1, 'Definicia stavu musi byt uzatvorena v zlozenych zatvorkach.'
 
-		#and finally for comma after state definition
 		self.was_ws = False
 		txt, token = self.__get_token()
 		if not self.ws:
 			if token != lex.comma:
-				return 1, 'Za definici stavu musi byt carka.'
+				return 1, 'Za definiciou stavu sa musi nachadzat ciarka.'
 		else:
 			if token != lex.comma and self.was_ws != True:
-				return 1, 'Za definici stavu musi byt bily znak (znaky).'
+				return 1, 'Za definiciou stavu sa musi nachadzat biely znak .'
 			if token != lex.comma:
 				self.got_ws = True
 
-		#if all went well, we got here
 		return 0, ''
-	#__a_states
 
+#rozdelenie znakov abecedy na tokeny a ulozenie ich v premennych tried
 	def __a_alphabet(self):
-		""" Parses abeceda characters from token and stores them in class variables """
 		txt, token = self.__get_token()
 		#check for left curly bracket
 		if token != lex.left_curly:
-			return 1, 'Abeceda musi byt uzavrena ve slozenych zavorkach.'
+			return 1, 'Abeceda musi byt uzatvorena v zlozenych zatvorkach.'
 
 		txt, token = self.__get_token()
 		while token != lex.right_curly and token != lex.eof:
-			#look for abeceda character
 			if token != lex.string:
-				return 1, 'Ocekavam znak abecedy.'
+				return 1, 'Ocakavam znak abecedy.'
 
-			#insert it into fsm.abeceda
 			self.fsm.abeceda.append(txt)
 
-			#look for comma or right curly bracket
 			self.was_ws = False
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.right_curly:
-					return 1, 'V abecede musi byt jednotlive polozky oddeleny carkou nebo koncit pravou slozenou zavorkou.'
+					return 1, 'V abecede musia byt jednotlive polozky oddelene ciarkou alebo koncit pravou zlozenou zatvorkou.'
 			else:
 				if token != lex.right_curly and token != lex.comma and self.was_ws != True:
-					return 1, 'V abecede musi byt jednotlive polozky oddeleny bilym znakem (znaky) nebo koncit pravou slozenou zavorkou.'
+					return 1, 'V abecede musia byt jednotlive polozky oddelene beilym znakem alebo koncit pravou zlozenou zavorkou.'
 				if token != lex.comma and token != lex.right_curly:
 					self.got_ws = True
 		
-			# we already got end of abeceda - right curly bracket
 			if token != lex.right_curly:
 				txt, token = self.__get_token()
 
-		#check for right curly bracket
 		if token != lex.right_curly:
-			return 1, 'Abeceda musi byt uzavrena ve slozenych zavorkach.'
+			return 1, 'Abeceda musi byt uzatvorena v zlozenych zatvorkach.'
 
-		#and finally for comma after state definition
 		self.was_ws = False
 		txt, token = self.__get_token()
 		if not self.ws:
 			if token != lex.comma:
-				return 1, 'Za abecedou musi byt carka.'
+				return 1, 'Za abecedou sa musi nachadzat ciarka.'
 		else:
 			if self.was_ws != True and token != lex.comma:
-				return 1, 'Za abecedou musi byt bily znak.'
+				return 1, 'Za abecedou sa musi nachadzat bily znak.'
 			if token != lex.comma:
 				self.got_ws = True
 
-		#if all went well, we got here
-		return 0, ''
-	#__a_alphabet
 
+		return 0, ''
+
+#rozreli pravidla ziskane z tokenov a ulozi ich v triednych premenych
 	def __a_rules(self):
-		""" Parses pravidla from tokens and stores them in class variable """
 		txt, token = self.__get_token()
 		if token != lex.left_curly:
-			return 1, 'Pravidla musi byt ohranicena slozenymi zavorkami.'
+			return 1, 'Pravidla musia byt ohranicene zlozenymi zatvorkami.'
 
 		txt, token = self.__get_token()
 		while token != lex.right_curly and token != lex.eof:
@@ -296,12 +274,10 @@ class Analysis:
 			alpha_char = ""
 			second_state = ""
 
-			#look for first state
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, 'Na zacatku stavy ocekavam identifikator stavu.'
+				return 1, 'Na zaciatku stavu ocakavam identifikator stavu.'
 			first_state = txt
 
-			#if there is abeceda, save it. If not, set arrow flag to true
 			txt, token = self.__get_token()
 			if token == lex.string:
 				alpha_char = txt if txt != "''" else ''
@@ -309,221 +285,187 @@ class Analysis:
 				was_arrow = True
 				alpha_char = ""
 			else:
-				return 1, 'Po pocatecnim stavu ocekavam bud "->" nebo znak abecedy.'
+				return 1, 'Po pociatocnom stave ocakavam bud "->" alebo znak abecedy.'
 
-			#if there wasnt already arrow, check it
 			if not was_arrow:
 				txt, token = self.__get_token()
 				if token != lex.arrow:
-					return 1, 'Po pocatecnim stavu a pripadnem znaku abecedy cekam "->".'
+					return 1, 'Po pociatecnim stave a pripadnom znaku abecedy ocakavam "->".'
 
-			#after arrow must be second state identifier
 			txt, token = self.__get_token()
 			if token != lex.string or not self.__is_identifier(txt):
 				return 1, 'Po "->" ocekavam identifikator ciloveho stavu.'
 			second_state = txt
 
-			#rule must end with comma or right curly bracket
 			self.was_ws = False
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.right_curly:
-					return 1, 'Na konci stavy cekam carku nebo pravou slozenou zavorku.'
+					return 1, 'Na konci stavu cekam ciarku alebo pravu zlozenou zatvorku.'
 			else:
 				if token != lex.right_curly and token != lex.comma and self.was_ws != True:
-					return 1, 'Na konci stavy cekam carku nebo pravou slozenou zavorku.'
+					return 1, 'Na konci stavu cakam ciarku alebo prau zlozenu zatvorku.'
 				if token != lex.comma and token != lex.right_curly:
 					self.got_ws = True
 
-			#we already got right curly bracket
 			if token != lex.right_curly:
 				txt, token = self.__get_token()
 
-			#add rule to the FinalStateMachine
 			self.fsm.pravidla.append({
 				"first_state": 	first_state,
 				"alpha_char": 	alpha_char,
 				"second_state":	second_state
 			})
-		#while
 
 		if token != lex.right_curly:
-			return 1, 'Definice pravidel musi koncit pravou slozenou zavorkou.'
+			return 1, 'Definicia pravidiel musi byt ukoncena pravou zlozenou zatvorkou.'
 
 		self.was_ws = False
 		txt, token = self.__get_token()
 		if not self.ws:
 			if token != lex.comma:
-				return 1, 'Za definici pravidel musi byt carka.'
+				return 1, 'Za definiciou pravidiel sa musi nachadzat ciarka.'
 		else:
 			if self.was_ws != True and token != lex.comma:
-				return 1, 'Za definici pravidel musi byt bily znak(znaky).'
+				return 1, 'Za definiciou pravidiel sa musi nachadzat bily znak.'
 			if token != lex.comma:
 				self.got_ws = True
 
 		return 0, ''
-	#__a_rules
 
+#rozdeli pociatocny stav a ulozi ho v premennych triedy
 	def __a_start_state(self):
-		""" Parses start state and stores it in class variable """
-		#expecting identifier of start state
+#ocakava identifikator pociatocneho stavu
 		txt, token = self.__get_token()
 		if token != lex.string or not self.__is_identifier(txt):
-			return 1, 'Ocekavam identifikator pocatecniho stavu.'
+			return 1, 'Ocakavam identifikator pociatocneho stavu.'
 		self.fsm.pociatocny_stav = txt
 
 		self.was_ws = False
 		txt, token = self.__get_token()
 		if not self.ws:
 			if token != lex.comma:
-				return 1, 'Po identifikaci pocatecniho stavu ocekavam carku.'
+				return 1, 'Po identifikacii pociatocneho stavu ocakavam ciarku.'
 		else:
 			if token != lex.comma and self.was_ws != True:
-				return 1, 'Po identifikaci pocatecniho stavu ocekavam bily znak(znaky).'
+				return 1, 'Po identifikacii pociatocneho stavu ocakavam biely znak.'
 			if token != lex.comma:
 				self.got_ws = True
 		return 0, ''
-	#__a_start_state
 
+#rozdely koncove stavy z tokenu a ulozi ich v premennej triedy
 	def __a_final_states(self):
-		""" Parses final stavy from token and stores it in class variable """
 		txt, token = self.__get_token()
-		#check for left curly bracket
 		if token != lex.left_curly:
-			return 1, 'Definice konecnych stavu musi byt uzavrena ve slozenych zavorkach.'
+			return 1, 'Definicia konecnych stavou musi byt uzatvorena v zlozenych zatvorkach.'
 
 		txt, token = self.__get_token()
 		while token != lex.right_curly and token != lex.eof:
-			#look for identifier
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, 'V definici konecnych stavu musi byt retezec ve tvaru C identifikatoru.'
+				return 1, 'V definicii konecnych stavvu sa musi nachadzat retezec v tvare C identifikatoru.'
 
-			#insert it into fsm.ukoncujuce_stavy
 			self.fsm.ukoncujuce_stavy.append(txt)
 
-			#look for comma or right curly bracket
 			self.was_ws = False
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.right_curly:
-					return 1, 'V definici konecnych stavu musi byt jednotlive polozky oddeleny carkou.'
+					return 1, 'V definicii konecnych stavov musia byt jednotlive polozky oddelene ciarkou.'
 			else:
 				if token != lex.right_curly and token != lex.comma and self.was_ws != True:
-					return 1, 'V definici konecnych stavu musi byt jednotlive polozky oddeleny bilym znakem (znaky).'
+					return 1, 'V definicii konecnych stavov musia byt jednotlive polozky oddelene bielym znakem .'
 				if token != lex.right_curly and token != lex.comma:
 					self.got_ws = True
 
-			# we already got end of final state definition - right curly bracket
 			if token != lex.right_curly:
 				txt, token = self.__get_token()
 
-		#check for right curly bracket
 		if token != lex.right_curly:
-			return 1, 'Definice konecnych stavu musi byt uzavrena ve slozenych zavorkach.'
+			return 1, 'Definicia konecnych stavov musi byt uzatvorena v zlozenych zatvorkach.'
 
-		#if all went well, we got here
 		return 0, ''
-	#__a_final_states
 
+#rozdeli cely KA a zavola metody pre rozdelenie jednotlivych komponentov
 	def __a_whole(self):
-		""" Parses whole FSM and calls methods for parsing components """
 		char, token = self.__get_token()
 
-		#check if is there left parenthesis around whole object
 		if token != lex.left_par:
-			return 1, "Cely FSM musi byt uzavren kulatou zavorkou."
+			return 1, "Cely KA musi byt uzatvoreny gulatou zatvorkou."
 
-		#parse all stavy (first curly brackets)
 		err, msg = self.__a_states()
 		if err != 0:
 			return err, msg
 
-		#parse abeceda
 		err, msg = self.__a_alphabet()
 		if err != 0:
 			return err, msg
 
-		#parse pravidla
 		err, msg = self.__a_rules()
 		if err != 0:
 			return err, msg
 
-		#parse start state
 		err, msg = self.__a_start_state()
 		if err != 0:
 			return err, msg
 
-		#parse final stavy
 		err, msg = self.__a_final_states()
 		if err != 0:
 			return err, msg
 
-		#check if is there right parenthesis around whole object
 		char, token = self.__get_token()
 		if token != lex.right_par:
 			return 1, "Cely FSM musi byt ohranicen v kulatych zavorkach."
 
-		#check if is there something more then we want
 		char, token = self.__get_token()
 		if token != lex.eof:
 			return 1, "Po prave zavorce mohou nasledovat pouze komentare nebo bile znaky."
 
-		# all went well and FSM is saved in instance of FinalStateMachine obejct
 		return 0, ''
-	#__a_whole
 
+#rozdelenie pravidiel z RLO bonusu a ulozenie v priednych premennych
 	def __rules(self):
-		""" Parse pravidla from RLO bonus extension and stores it in class variables"""
 		txt, token = self.__get_token()
 		got_start_state = False
 
-		# repeat until eof
+# pokial nenarazi an eof
 		while token != lex.eof:
-			#first we except state identifier
 			if token != lex.string or not self.__is_identifier(txt):
-				return 1, "Identifikator vychoziho stavu musi byt v C formatu."
+				return 1, "Identifikator vychodzieho stavu musi byt v C formatu."
 
-			# mark it like a start state if we have no one like it so far
 			if not got_start_state:
 				self.fsm.pociatocny_stav = txt
 				got_start_state = True
 
-			# and add it to the array if stavy. We will remove duplicates later
 			first_state = txt
 			self.fsm.stavy.append(txt)
 
-			# now we except abeceda character
 			txt, token = self.__get_token()
 			if token != lex.string:
-				return 1, "Za vychozim pravidlem ocekavam znak abecedy."
+				return 1, "Za vychodzim pravidlom ocakavam znak abecedy."
 
 			self.fsm.abeceda.append(txt)
 			char = txt
 
-			# check for arrow
 			txt, token = self.__get_token()
 			if token != lex.arrow:
-				return 1, "Za znakem abecedy ocekavam dvojznak \"sipku\""
+				return 1, "Za znakom abecedy ocakavam dvojznak"
 
-			# and check second state identifier
 			txt, token = self.__get_token()
 			if token != lex.string and not self.__is_identifier(txt):
-				return 1, "Identifikator ciloveho stavu musi byt v C formatu."
+				return 1, "Identifikator cieloveho stavu musi byt v C formate."
 
 			self.fsm.stavy.append(txt)
 			second_state = txt
 
-			# check for dot, comma or in case wht is on for white spaces too
 			self.was_ws = False
 			txt, token = self.__get_token()
 			if not self.ws:
 				if token != lex.comma and token != lex.dot and token != lex.eof:
-					return 1, "Za pravidlem ocekavam bud carku nebo tecku."
+					return 1, "Za pravidlom ocakavam carku alebo bodku."
 			else:
 				if token != lex.comma and token != lex.dot and token != lex.eof and self.was_ws != True:
-					return 1, "Za pravidlem ocekavam carku, tecku nebo bily znak."
+					return 1, "Za pravidlom ocekavam ciarku, bodku alebo biely znak."
 
-			# if last separator was dot, add final state to the array
 			if token == lex.dot:
 				self.fsm.ukoncujuce_stavy.append(second_state)
 
@@ -534,31 +476,25 @@ class Analysis:
 			})
 
 			txt, token = self.__get_token()
-		#while
 
-		# and finally remove duplicates
 		self.fsm._nahrad_opakujucel_()
 		return 0, ""
-	#__rules
 
+#obalenie verejnej funkcie pre analyzu pravidiel RLO bonusovej lokacie
 	def analyze_by_rules(self):
-		""" Wrapping public function for analyzing pravidla from RLO bonus extension"""
 		err, msg = self.__rules()
 		if err != 0:
 			return err, msg
 		else:
 			return err, self.fsm
-	#analyze_by_rules
 
-
+#obalenie verejnej funkcie pre analyzu KA
 	def analyze(self):
-		""" Wrapping public function for analyzing FSM """
 		err, msg = self.__a_whole()
 		if err != 0:
 			return err, msg
 		else:
 			return 0, self.fsm
-	#analyze
 
 if __name__ == '__main__':
 	fsm_test = """# velmi jednoducha minimalizace
