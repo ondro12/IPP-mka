@@ -4,9 +4,9 @@
 
 import pprint
 
+# nastavenie premenych triedy
 class FinalStateMachine:
 	def __init__(self, c_insensitive):
-		""" Sets init values of class variables """
 		self.stavy = []
 		self.abeceda = []
 		self.pravidla = []
@@ -19,42 +19,39 @@ class FinalStateMachine:
 		self.minimalny_pociatocny_stav = ""
 		self.minimalne_konecne_stavy = []
 
+#metoda sluziaca na overenie zakladnych pravidiel konecneho automatu
 	def over(self):
-		""" Validates basic pravidla of FSM """
-		#check if there are characters in abeceda
+#kontrola, ci sa nachadzaju nejake znaky vo vstupnej abecede
 		if len(self.abeceda) == 0:
-			return 1, 'Vstupni abeceda nesmi byt prazdna.'
+			return 1, 'Vstupna abeceda nemoze byt prazdna.'
 
-		#check if all stavy in pravidla are also in stavy
+#kontrola , ci sa vsetky stavy nachazdajuce sa v stavoch pravidiel tiez nachadzaju v stavoch automatu
 		for rule in self.pravidla:
 			if rule["first_state"] not in self.stavy:
-				return 1, 'Pocatecni stav stavy neni v seznamu stavu.'
+				return 1, 'Pociatocny stav sa nenachadza v mnozine stavov.'
 			if rule["second_state"] not in self.stavy:
-				return 1, 'Koncovy stav stavy neni v seznamu stavu.'
+				return 1, 'Koncovy stav sa nenachadza v mnozine stavov.'
 			if rule["alpha_char"] != None and \
 				rule["alpha_char"] not in self.abeceda:
-				return 1, 'Symbol abecedy stavy neni v abecede.'
+				return 1, 'Symbol abecedy sa nenachadza v zadanej mnozine abecedy.'
 
-		#check if start state is in stavy
+#kontrola, ci sa pociatocny stav nachadza v mnozine stavov
 		if self.pociatocny_stav not in self.stavy:
-			return 1, 'Pocatecni stav neni v seznamu stavu.'
+			return 1, 'Pociatocny stav sa nenachadza v mnozine stavov.'
 
-		#check if final stavy are in stavy
+#kontrola, ci sa koncove stavy nachadzaju v mnozine stavov
 		for final in self.ukoncujuce_stavy:
 			if final not in self.stavy:
-				return 1, 'Koncovy stav neni v seznamu stavu.'
+				return 1, 'Koncovy stav sa nenachadza v mnozine stavov.'
 
 		return 0, ''
-	#over
-
+#prejdenie vsetkych dostupnych stavov ktore mozeme dosiahnut z pociatocneho stavu v argumente a ich navrat v poli
 	def _prejdene_stavy_(self, pociatocny_stav):
-		""" Returns array of all reachable stavy we can get to 
-		from pociatocny_stav in argument. """
 		to_visit = []
 		to_visit.append(pociatocny_stav)
 		visited = []
 
-		# use BFS algorithm to visit all possible stavy in graph
+# pouziva BFS algoritmus na prejdenie vsetkych dostupnych stavov v grafe
 		while len(to_visit) != 0:
 			actual = to_visit.pop()
 			visited.append(actual)
@@ -64,45 +61,41 @@ class FinalStateMachine:
 						to_visit.append(rule["second_state"])
 
 		return visited
-	#_prejdene_stavy_
-
+#ziskanie vsetkych nedosiahnutelnych stavov KA
 	def _nedosiahnutelne_stavy_(self):
-		""" Returns all unreachable stavy of FSM """
 		visited = self._prejdene_stavy_(self.pociatocny_stav)
 
-		#get all stavy i can go to from start state
+#ziskanie vsethych stavov, ktore je mozne ziskat z pociatocneho stavu
 		unreachable = []
 		for state in self.stavy:
-			#and if there is some state i cant go to, its the unreachable one
+#pokial najde stav do ktoreho sa nemoze dostat vlozi ho do zoznamu nedosiahnutelnych stavov
 			if state not in visited and state not in self.ukoncujuce_stavy:
 				unreachable.append(state)
 
 		return unreachable
-	#unreachable_states
 
+# ziskanie a vratenie vsetkych neukoncujucich stavov KA
 	def _neukoncujuce_stavy_(self):
-		""" Return all non finishing stavy of FSM"""
 		non_finishing = []
 
 		for state in self.stavy:
 			present = False
-			#for every state get all stavy i can go to
+#pre kazdy stav ziska vsetky stavy, ku ktorym sa moze dostat
 			visited = self._prejdene_stavy_(state)
 			for final_state in self.ukoncujuce_stavy:
-				#and if there are no final stavy in visited, its non-finishing
+#pokial tu niesu ziadne ukoncujuce stavy vo vsetkych prejdenych stavoch je to neukoncujuci 
 				if final_state in visited:
 					present = True
 			if not present:
 				non_finishing.append(state)
 
 		return non_finishing
-	#__non_finishing_states
 
+#kontrola, ci zadany KA je kompletny
 	def _kompletny_over_(self):
-		""" Checks if FSM is complete """
 		for state in self.stavy:
 			for char in self.abeceda:
-				#check all combinations of state and abeceda char if there is rule for them
+#kontrola vsetkych kombinacii stavov a abecedy , ci su pre en pravidla
 				found_rule = False
 				for rule in self.pravidla:
 					if rule["first_state"] == state and rule["alpha_char"] == char:
@@ -110,74 +103,65 @@ class FinalStateMachine:
 				if found_rule == False:
 					return False
 		return True
-	#_kompletny_over_
 
+# zistenie , ci sa jedna o podmnozinu nejakeho ineho stavu
 	def _je_podmnozina_(self, original_set, sub_set):
-		""" Returns true if one set is subset of another """
 		for state in sub_set:
 			if state not in original_set:
 				return False
 		return True
 
+# zistenie ci je KA well-specified
 	def _je_wsfa_(self):
-		""" Returns true if FSM is well-specified """
 		unreachable = self._nedosiahnutelne_stavy_()
 		non_finishing = self._neukoncujuce_stavy_()
-		# well specified final automat has no unreachable stavy and maximum one non-finishing
-		# state. Also it is complete automat (every combination of state and abeceda char)
-		# has its own rule.
+# well-specified konecny automat nema ziadne nedosiahnutelne stavy a nanajvys jeden neukoncujuci stav
+# a taktiez kazda kombinacia stavu a abecedy musi mat vlastne pravidlo
 		if len(unreachable) == 0 and len(non_finishing) <= 1 and self._kompletny_over_()\
 			and len(self.ukoncujuce_stavy) > 0 and self._je_podmnozina_(self.stavy, self.ukoncujuce_stavy):
 			if len(non_finishing) == 1:
-				#if non_finishing[0] == 'qFALSE' or non_finishing[0] == 'qfalse':
 				return True
 			else:
 				return True
 		return False
-	#is_wfa
 
+#nahradi vsetky duplikaty zanadne v poli 
 	def _nahrad_opak_vpol_(self, array):
-		""" Removes all duplicates in given array """
 		rslt = []
 		for item in array:
 			if item not in rslt:
 				rslt.append(item)
 		return rslt
-	#_nahrad_opak_vpol_
 
-
+#nahradi vsetky duplicity v premennych tried vztahujucim sa ku KA
 	def _nahrad_opakujucel_(self):
-		""" Removes all duplicates in class variables related to FSM """
 		self.stavy = self._nahrad_opak_vpol_(self.stavy)
 		self.abeceda = self._nahrad_opak_vpol_(self.abeceda)
 		self.ukoncujuce_stavy = self._nahrad_opak_vpol_(self.ukoncujuce_stavy)
 		self.pravidla = self._nahrad_opak_vpol_(self.pravidla)
-	#_nahrad_opakujucel_
 
+#pridanie pravidiel
 	def _pridaj_pravidlol_(self, first_state, alpha_char, second_state):
-		""" Adds rule to the class set of pravidla """
 		self.pravidla.append({
 			'first_state' : first_state,
-			'alpha_char'	: alpha_char,
+			'alpha_char'  : alpha_char,
 			'second_state': second_state
 			})
-	#_pridaj_pravidlol_
-
+#prevedenie dka na  well-specified KA """
 	def _preved_na_wsfa_(self):
-		""" Converts deterministic FSM to well-specified FSM """
 		if self._je_wsfa_():
 			return
 		unreachable = self._nedosiahnutelne_stavy_()
 		non_finishing = self._neukoncujuce_stavy_()
 		qfalse = "qFALSE" if not self.c_insensitive else "qfalse"
 
-		#remove all pravidla of unreachable stavy with state identifier on left side of rule
+#odstrani vsetky pravilda pre nedosiahnutelne stavy identifikatorov na lavej strane pravidla
 		new_rules = []
 		for rule in self.pravidla:
 			if rule["first_state"] not in unreachable:
 				new_rules.append(rule)
 
-		#remove all pravidla of non-finishing stavy with state identifier on right side of rule
+#odstrani vsetky pravidla pre neukoncujuce stavy identifikatorov na pravej strane pravidla 
 		rslt = []
 		for rule in new_rules:
 			if rule["second_state"] not in non_finishing:
@@ -185,13 +169,13 @@ class FinalStateMachine:
 		self.pravidla = rslt
 
 		rslt = []
-		#remove all unreachable and non-finishing stavy from fsm stavy
+#odstrani vsetky nedosiahnutelne a neukoncujuce stavy
 		for state in self.stavy:
 			if state not in unreachable and state not in non_finishing:
 				rslt.append(state)
 		self.stavy = rslt
 
-		#create missing pravidla to make it complete automat
+#vytvorenie chybajuceich pravidiel , aby bol automat kompletny
 		used_qfalse = False
 		for state in self.stavy:
 			for char in self.abeceda:
@@ -203,43 +187,36 @@ class FinalStateMachine:
 					used_qfalse = True
 					self._pridaj_pravidlol_(state, char, qfalse)
 
-		#if we used qFALSE, we must add it to the stavy and create additional pravidla
+#if we used qFALSE, we must add it to the stavy and create additional pravidla
 		if used_qfalse:
 			self.stavy.append(qfalse)
 			for char in self.abeceda:
 				self._pridaj_pravidlol_(qfalse, char, qfalse)
-	#_preved_na_wsfa_
-
+				
+#ziskanie neukoncujucich stavov KA
 	def _ziskaj_neukoncujuce_stavy_(self):
-		""" Returns all stavy that are not final stavy of FSM """
 		rslt = []
 		for state in self.stavy:
 			if state not in self.ukoncujuce_stavy:
 				rslt.append(state)
 		return rslt
-	#_ziskaj_neukoncujuce_stavy_
 
+#ziskanie konecnyc stavov zalozene na pravidlach ktore pouzivaju prvy stav a znak abecedy 
 	def _ziskaj_ukoncujuce_stavy_(self, s_set, char):
-		""" Returns destination stavy of set based on pravidla with using 
-		first state and abeceda character """
 		dest_states = []
 		for state in s_set:
 			for rule in self.pravidla:
 				if rule["first_state"] == state and rule["alpha_char"] == char:
 					dest_states.append(rule["second_state"])
 		return dest_states
-	#_ziskaj_ukoncujuce_stavy_
-
+#ziskanie konecneho stavu zalozene na pravidlach ktore pouzivaju prvy stav a znak abecedy 
 	def _ziskaj_ukoncujuci_stav_(self, state, char):
-		""" Returns destination state based on pravidla with using first state
-		and abeceda character """
 		for rule in self.pravidla:
 			if rule["first_state"] == state and rule["alpha_char"] == char:
 				return rule["second_state"]
-	#_ziskaj_ukoncujuce_stavy_
-
+				
+#kontrola ci su vsetky stavy z rovnakej mnoziny
 	def _su_v_rovnakej_mnozine_(self, state_sets, stavy):
-		""" Returns true if all stavy in set are from same subset """
 		for s_set in state_sets:
 			present = True
 			for state in stavy:
@@ -249,87 +226,75 @@ class FinalStateMachine:
 			if present == True:
 				return True
 		return False
-	#are_in_same_set
 
+#ziskanie indexu podmnoziny zalozeneho na stave
 	def _ziskaj_id_stavu_(self, original_sets, state):
-		""" Returns index of subset based on state """
 		for i in range(len(original_sets)):
 			if state in original_sets[i]:
 				return i
 		return None
-	#__get_set_by_state
-
+		
+#rozdelenie podmnozin stavov zalozene na indexe koncovych stavov
 	def _rozdel_podla_stavu_(self, original_sets, con_set, char):
-		""" Divides subset of stavy based on their index of destination stavy """
 		identified = []
-		#create structure with original state, final state (by using pravidla)
-		#and set id of set
+#vytvorenie struktury s povodnymi stavmi a konecnymi stavmi a ulozenie id
 		for state in con_set:
 			identified.append({
 				"pociatocny_stav" : state,
 				"final_state" : self._ziskaj_ukoncujuci_stav_(state, char),
 				"id"		: self._ziskaj_id_stavu_(original_sets, self._ziskaj_ukoncujuci_stav_(state, char))
 				})
-		#remove from original_sets the one that we are working on (dividing)
+#odstranenie z original_sets prave spracovavany 
 		rslt = []
 		for s_set in original_sets:
 			if s_set != con_set:
 				rslt.append(s_set)
 
-		#create subsets based on original set we are dividing
 		for i in range(len(original_sets)):
 			tmp = []
 			for iden in identified:
 				if iden["id"] == i:
 					tmp.append(iden["pociatocny_stav"])
-			#and add them to the original set
 			if len(tmp) > 0:
 				rslt.append(tmp)
 
 		return rslt
-	#_rozdel_podla_stavu_
 
+#ziska koncovy stav pravidla zalozene na prvom stave a znaku
 	def _ziskaj_pravy_stav_(self, left_state, char):
-		""" Returns destination state of rule based on first state and character """
-		#try all stavy on left side
+#skusi vsetky stavy na lavejs trane
 		for lst in left_state:
-			#check pravidla
+#skontroluje pravidla
 			for rule in self.pravidla:
-				#and find the one that corresponds with left_state and alpha_char
+#najdenie pravidla, ktore koresponduje s left_state a alpha_char
 				if rule["first_state"] == lst and rule["alpha_char"] == char:
 					return rule["second_state"]
 		return None
 
+#metoda sluziaca na minimalizaciu
 	def _minimalizuj_(self):
-		""" Controlling function for minimizing algorithm """
 		dividing = True
-		#create and fill starting set of stavy (final and non-final set of stavy)
+#vytvorenie a naplnenie mnoziny stavov
 		state_sets = []
 		state_sets.append(self.ukoncujuce_stavy)
 		non_final_states = self._ziskaj_neukoncujuce_stavy_()
 		if len(non_final_states) > 0:
 			state_sets.append(non_final_states)
 
-		# divide until we can divide
 		while dividing == True:
 			dividing = False
 			for char in self.abeceda:
 				for s_set in state_sets:
-					#go through all subsets in original_set and check destination stavy
 					ukoncujuce_stavy = self._ziskaj_ukoncujuce_stavy_(s_set,char)
-					#if they are not in one subset
 					if not self._su_v_rovnakej_mnozine_(state_sets, ukoncujuce_stavy):
 						dividing = True
-						#divide it and start all over
 						state_sets = self._rozdel_podla_stavu_(state_sets, s_set, char)
 						break
 
-		#create set of all minimized stavy with right naming
 		for s_set in state_sets:
 			s_set.sort()
 			self.minimalne_stavy.append('_'.join(s_set))
 
-		#and all the pravidla
 		for s_set in state_sets:
 			for char in self.abeceda:
 				right_state = self._ziskaj_pravy_stav_(s_set, char)
@@ -345,7 +310,6 @@ class FinalStateMachine:
 					'second_state': '_'.join(r_s_set)
 					})
 
-		#final stavy
 		for s_set in state_sets:
 			for final_state in self.ukoncujuce_stavy:
 				if final_state in s_set:
@@ -353,20 +317,17 @@ class FinalStateMachine:
 					self.minimalne_konecne_stavy.append('_'.join(s_set))
 					break
 
-		#and start state ofcourse
 		for s_set in state_sets:
 			if self.pociatocny_stav in s_set:
 				s_set.sort()
 				self.minimalny_pociatocny_stav = '_'.join(s_set)
 				break
-	#_minimalizuj_
-
+			
+#vypisanie minimalizovaneho KA na vystup
 	def _vypis_minimalizovany_(self, o):
-		""" Prints minimized FSM to the output """
-		#opening parenthesis
 		print("(", file=o)
 
-		#minimized set of stavy
+#minimalizovany set stavov
 		print("{", file=o, end="")
 		self.minimalne_stavy.sort()
 		for i in range(len(self.minimalne_stavy)):
@@ -383,7 +344,7 @@ class FinalStateMachine:
 				print(", ", file=o, end="")
 		print("},", file=o)
 
-		#print pravidla
+#vypis pravidiel
 		print("{", file=o)
 		self.minimalne_stavy.sort()
 		self.abeceda.sort()
@@ -402,7 +363,7 @@ class FinalStateMachine:
 							count += 1
 		print("},", file=o)
 
-		#print start state
+#vypis pociatocneho znaku
 		print(self.minimalny_pociatocny_stav,",",sep="",file=o)
 
 		print("{", file=o, end="")
@@ -414,16 +375,12 @@ class FinalStateMachine:
 				print(", ", end="", file=o)
 		print("}", file=o)
 
-		#closing parenthesis
 		print(")", file=o, end="")
-	#_vypis_minimalizovany_
 
+#vypisanie originalneho KA na vystup
 	def _vypis_wsfa_(self, o):
-		""" Writes original FSM to the output """
-		#opening parenthesis
 		print("(", file=o)
 
-		#minimized set of stavy
 		print("{", file=o, end="")
 		self.stavy.sort()
 		for i in range(len(self.stavy)):
@@ -432,7 +389,6 @@ class FinalStateMachine:
 				print(", ", file=o, end="")
 		print("},", file=o)
 
-		#print abeceda
 		print("{", file=o, end="")
 		self.abeceda.sort()
 		for i in range(len(self.abeceda)):
@@ -441,7 +397,6 @@ class FinalStateMachine:
 				print(", ", file=o, end="")
 		print("},", file=o)
 
-		#print pravidla
 		print("{", file=o)
 		self.stavy.sort()
 		self.abeceda.sort()
@@ -460,7 +415,6 @@ class FinalStateMachine:
 							count += 1
 		print("},", file=o)
 
-		#print start state
 		print(self.pociatocny_stav,",",sep="",file=o)
 
 		print("{", file=o, end="")
@@ -472,9 +426,7 @@ class FinalStateMachine:
 				print(", ", end="", file=o)
 		print("}", file=o)
 
-		#closing parenthesis
 		print(")", file=o, end="")
-	#_vypis_wsfa_
 
 	def _analyzuj_retazec_(self, text):
 		actual_state = self.pociatocny_stav
@@ -486,7 +438,6 @@ class FinalStateMachine:
 		if actual_state in self.ukoncujuce_stavy:
 			return True
 		return False
-	#_analyzuj_retazec_
 
 	def show(self):
 		""" Shows FSM variables. For debugging purposes """
